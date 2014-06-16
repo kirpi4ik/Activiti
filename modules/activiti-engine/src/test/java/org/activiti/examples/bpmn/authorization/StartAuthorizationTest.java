@@ -214,116 +214,146 @@ public class StartAuthorizationTest extends PluggableActivitiTestCase {
 	    }
 	
 	    // check with an authorized user obviously it should be no problem starting the process
-	    identityService.setAuthenticatedUserId("user1");
+	    identityService.setAuthenticatedUserId("user3");
 	    ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("potentialStarter");
 	    assertProcessEnded(processInstance.getId());
 	    assertTrue(processInstance.isEnded());
+	    
+	    //check extensionElements with : <formalExpression>group2, group(group3), user(user3)</formalExpression>
+	    ProcessDefinition potentialStarter = repositoryService.createProcessDefinitionQuery().processDefinitionKey("potentialStarter").startableByUser("user1").latestVersion().singleResult();
+	    assertNotNull(potentialStarter);
+	    
+	    potentialStarter = repositoryService.createProcessDefinitionQuery().processDefinitionKey("potentialStarter").startableByUser("user3").latestVersion().singleResult();
+	    assertNotNull(potentialStarter);
+	    
+	    potentialStarter = repositoryService.createProcessDefinitionQuery().processDefinitionKey("potentialStarter").startableByUser("userInGroup2").latestVersion().singleResult();
+	    assertNotNull(potentialStarter);
+	    
+	    potentialStarter = repositoryService.createProcessDefinitionQuery().processDefinitionKey("potentialStarter").startableByUser("userInGroup3").latestVersion().singleResult();
+	    assertNotNull(potentialStarter);
+	    
     } finally {
 
       tearDownUsersAndGroups();
     }
   }
 
-  /*
-   * if there is no security definition, then user authorization check is not
-   * done. This ensures backward compatibility
-   */
-  @Deployment
-  public void testPotentialStarterNoDefinition() throws Exception {
-    identityService = processEngine.getIdentityService();
+	/*
+	 * if there is no security definition, then user authorization check is not
+	 * done. This ensures backward compatibility
+	 */
+	@Deployment
+	public void testPotentialStarterNoDefinition() throws Exception {
+		identityService = processEngine.getIdentityService();
 
-    identityService.setAuthenticatedUserId("someOneFromMars");
-    ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("potentialStarterNoDefinition");
-    assertNotNull(processInstance.getId());
-    assertProcessEnded(processInstance.getId());
-    assertTrue(processInstance.isEnded());
-  }
-  
-  // this test checks the list without user constraint
-  @Deployment
+		identityService.setAuthenticatedUserId("someOneFromMars");
+		ProcessInstance processInstance = runtimeService
+				.startProcessInstanceByKey("potentialStarterNoDefinition");
+		assertNotNull(processInstance.getId());
+		assertProcessEnded(processInstance.getId());
+		assertTrue(processInstance.isEnded());
+	}
+
+	// this test checks the list without user constraint
+	@Deployment
 	public void testProcessDefinitionList() throws Exception {
-	  
-    setUpUsersAndGroups();
-    try {
-      
-      // Process 1 has no potential starters
-      ProcessDefinition latestProcessDef = repositoryService
-              .createProcessDefinitionQuery().processDefinitionKey("process1")
-              .singleResult();      
-      List<User> authorizedUsers = identityService.createUserQuery().potentialStarter(latestProcessDef.getId()).list();
-      assertEquals(0, authorizedUsers.size());
 
-      // user1 and user2 are potential Startes of Process2
-      latestProcessDef = repositoryService
-              .createProcessDefinitionQuery().processDefinitionKey("process2")
-              .singleResult();      
-      authorizedUsers =  identityService.createUserQuery().potentialStarter(latestProcessDef.getId()).orderByUserId().asc().list();
-      assertEquals(2, authorizedUsers.size());
-      assertEquals("user1", authorizedUsers.get(0).getId());
-      assertEquals("user2", authorizedUsers.get(1).getId());
+		setUpUsersAndGroups();
+		try {
 
-      // Process 2 has no potential starter groups
-      latestProcessDef = repositoryService
-              .createProcessDefinitionQuery().processDefinitionKey("process2")
-              .singleResult();      
-      List<Group> authorizedGroups = identityService.createGroupQuery().potentialStarter(latestProcessDef.getId()).list();
-      assertEquals(0, authorizedGroups.size());
-      
-      // Process 3 has 3 groups as authorized starter groups
-      latestProcessDef = repositoryService
-              .createProcessDefinitionQuery().processDefinitionKey("process4")
-              .singleResult();      
-      authorizedGroups = identityService.createGroupQuery().potentialStarter(latestProcessDef.getId()).orderByGroupId().asc().list();
-      assertEquals(3, authorizedGroups.size());
-      assertEquals("group1", authorizedGroups.get(0).getId());
-      assertEquals("group2", authorizedGroups.get(1).getId());
-      assertEquals("group3", authorizedGroups.get(2).getId());
+			// Process 1 has no potential starters
+			ProcessDefinition latestProcessDef = repositoryService
+					.createProcessDefinitionQuery()
+					.processDefinitionKey("process1").singleResult();
+			List<User> authorizedUsers = identityService.createUserQuery()
+					.potentialStarter(latestProcessDef.getId()).list();
+			assertEquals(0, authorizedUsers.size());
 
-      // do not mention user, all processes should be selected
-      List<ProcessDefinition> processDefinitions = repositoryService.createProcessDefinitionQuery()
-          .orderByProcessDefinitionName().asc().list();
+			// user1 and user2 are potential Startes of Process2
+			latestProcessDef = repositoryService.createProcessDefinitionQuery()
+					.processDefinitionKey("process2").singleResult();
+			authorizedUsers = identityService.createUserQuery()
+					.potentialStarter(latestProcessDef.getId()).orderByUserId()
+					.asc().list();
+			assertEquals(2, authorizedUsers.size());
+			assertEquals("user1", authorizedUsers.get(0).getId());
+			assertEquals("user2", authorizedUsers.get(1).getId());
 
-      assertEquals(4, processDefinitions.size());
+			// Process 2 has no potential starter groups
+			latestProcessDef = repositoryService.createProcessDefinitionQuery()
+					.processDefinitionKey("process2").singleResult();
+			List<Group> authorizedGroups = identityService.createGroupQuery()
+					.potentialStarter(latestProcessDef.getId()).list();
+			assertEquals(0, authorizedGroups.size());
 
-      assertEquals("process1", processDefinitions.get(0).getKey());
-      assertEquals("process2", processDefinitions.get(1).getKey());
-      assertEquals("process3", processDefinitions.get(2).getKey());
-      assertEquals("process4", processDefinitions.get(3).getKey());
+			// Process 3 has 3 groups as authorized starter groups
+			latestProcessDef = repositoryService.createProcessDefinitionQuery()
+					.processDefinitionKey("process4").singleResult();
+			authorizedGroups = identityService.createGroupQuery()
+					.potentialStarter(latestProcessDef.getId())
+					.orderByGroupId().asc().list();
+			assertEquals(3, authorizedGroups.size());
+			assertEquals("group1", authorizedGroups.get(0).getId());
+			assertEquals("group2", authorizedGroups.get(1).getId());
+			assertEquals("group3", authorizedGroups.get(2).getId());
 
-      // check user1, process3 has "user1" as only authorized starter, and
-      // process2 has two authorized starters, of which one is "user1"
-      processDefinitions = repositoryService.createProcessDefinitionQuery()
-          .orderByProcessDefinitionName().asc().startableByUser("user1").list();
+			// do not mention user, all processes should be selected
+			List<ProcessDefinition> processDefinitions = repositoryService
+					.createProcessDefinitionQuery()
+					.orderByProcessDefinitionName().asc().list();
 
-      assertEquals(2, processDefinitions.size());
-      assertEquals("process2", processDefinitions.get(0).getKey());
-      assertEquals("process3", processDefinitions.get(1).getKey());
+			assertEquals(4, processDefinitions.size());
 
+			assertEquals("process1", processDefinitions.get(0).getKey());
+			assertEquals("process2", processDefinitions.get(1).getKey());
+			assertEquals("process3", processDefinitions.get(2).getKey());
+			assertEquals("process4", processDefinitions.get(3).getKey());
 
-      // "user2" can only start process2
-      processDefinitions = repositoryService.createProcessDefinitionQuery().startableByUser("user2").list();
+			// check user1, process3 has "user1" as only authorized starter, and
+			// process2 has two authorized starters, of which one is "user1"
+			processDefinitions = repositoryService
+					.createProcessDefinitionQuery()
+					.orderByProcessDefinitionName().asc()
+					.startableByUser("user1").list();
 
-      assertEquals(1, processDefinitions.size());
-      assertEquals("process2", processDefinitions.get(0).getKey());
+			assertEquals(2, processDefinitions.size());
+			assertEquals("process2", processDefinitions.get(0).getKey());
+			assertEquals("process3", processDefinitions.get(1).getKey());
 
-      // no process could be started with "user4"
-      processDefinitions = repositoryService.createProcessDefinitionQuery().startableByUser("user4").list();
-      assertEquals(0, processDefinitions.size());
+			// "user2" can only start process2
+			processDefinitions = repositoryService
+					.createProcessDefinitionQuery().startableByUser("user2")
+					.list();
 
-      // "userInGroup3" is in "group3" and can start only process4 via group authorization
-      processDefinitions = repositoryService.createProcessDefinitionQuery().startableByUser("userInGroup3").list();
-      assertEquals(1, processDefinitions.size());
-      assertEquals("process4", processDefinitions.get(0).getKey());
+			assertEquals(1, processDefinitions.size());
+			assertEquals("process2", processDefinitions.get(0).getKey());
 
-      // "userInGroup2" can start process4, via both user and group authorizations
-      // but we have to be sure that process4 appears only once
-      processDefinitions = repositoryService.createProcessDefinitionQuery().startableByUser("userInGroup2").list();
-      assertEquals(1, processDefinitions.size());
-      assertEquals("process4", processDefinitions.get(0).getKey());
-    
-    } finally {
-      tearDownUsersAndGroups();
-    }
-  }
+			// no process could be started with "user4"
+			processDefinitions = repositoryService
+					.createProcessDefinitionQuery().startableByUser("user4")
+					.list();
+			assertEquals(0, processDefinitions.size());
+
+			// "userInGroup3" is in "group3" and can start only process4 via
+			// group authorization
+			processDefinitions = repositoryService
+					.createProcessDefinitionQuery()
+					.startableByUser("userInGroup3").list();
+			assertEquals(1, processDefinitions.size());
+			assertEquals("process4", processDefinitions.get(0).getKey());
+
+			// "userInGroup2" can start process4, via both user and group
+			// authorizations
+			// but we have to be sure that process4 appears only once
+			processDefinitions = repositoryService
+					.createProcessDefinitionQuery()
+					.startableByUser("userInGroup2").list();
+			assertEquals(1, processDefinitions.size());
+			assertEquals("process4", processDefinitions.get(0).getKey());
+
+		} finally {
+			tearDownUsersAndGroups();
+		}
+	}
 
 }
